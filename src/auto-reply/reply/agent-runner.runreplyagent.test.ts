@@ -383,6 +383,26 @@ describe("runReplyAgent typing (heartbeat)", () => {
     expect(typing.startTypingLoop).not.toHaveBeenCalled();
   });
 
+  it("suppresses partial streaming for NO_REPLY prefixes", async () => {
+    const onPartialReply = vi.fn();
+    state.runEmbeddedPiAgentMock.mockImplementationOnce(async (params: AgentRunParams) => {
+      await params.onPartialReply?.({ text: "NO_" });
+      await params.onPartialReply?.({ text: "NO_RE" });
+      await params.onPartialReply?.({ text: "NO_REPLY" });
+      return { payloads: [{ text: "NO_REPLY" }], meta: {} };
+    });
+
+    const { run, typing } = createMinimalRun({
+      opts: { isHeartbeat: false, onPartialReply },
+      typingMode: "message",
+    });
+    await run();
+
+    expect(onPartialReply).not.toHaveBeenCalled();
+    expect(typing.startTypingOnText).not.toHaveBeenCalled();
+    expect(typing.startTypingLoop).not.toHaveBeenCalled();
+  });
+
   it("does not start typing on assistant message start without prior text in message mode", async () => {
     state.runEmbeddedPiAgentMock.mockImplementationOnce(async (params: AgentRunParams) => {
       await params.onAssistantMessageStart?.();

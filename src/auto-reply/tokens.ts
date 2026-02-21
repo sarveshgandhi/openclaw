@@ -18,3 +18,17 @@ export function isSilentReplyText(
   const suffix = new RegExp(`\\b${escaped}\\b\\W*$`);
   return suffix.test(text);
 }
+
+export function isSilentReplyPrefixText(
+  text: string | undefined,
+  token: string = SILENT_REPLY_TOKEN,
+): boolean {
+  if (!text) {
+    return false;
+  }
+  const normalized = text.trimStart().toUpperCase();
+  if (!normalized) {
+    return false;
+  }
+  return token.toUpperCase().startsWith(normalized);
+}

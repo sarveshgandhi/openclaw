@@ -28,7 +28,7 @@ import {
 import { stripHeartbeatToken } from "../heartbeat.js";
 import type { TemplateContext } from "../templating.js";
 import type { VerboseLevel } from "../thinking.js";
-import { isSilentReplyText, SILENT_REPLY_TOKEN } from "../tokens.js";
+import { isSilentReplyPrefixText, isSilentReplyText, SILENT_REPLY_TOKEN } from "../tokens.js";
 import type { GetReplyOptions, ReplyPayload } from "../types.js";
 import {
   buildEmbeddedRunBaseParams,
@@ -138,7 +138,10 @@ export async function runAgentTurnWithFallback(params: {
           }
           text = stripped.text;
         }
-        if (isSilentReplyText(text, SILENT_REPLY_TOKEN)) {
+        if (
+          isSilentReplyText(text, SILENT_REPLY_TOKEN) ||
+          isSilentReplyPrefixText(text, SILENT_REPLY_TOKEN)
+        ) {
           return { skip: true };
         }
         if (!text) {
