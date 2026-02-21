@@ -82,29 +82,6 @@ describe("dispatchTelegramMessage draft streaming", () => {
     };
   }
 
-  function createFlushSequencedDraftStream(startMessageId = 2001) {
-    let activeMessageId: number | undefined;
-    let nextMessageId = startMessageId;
-    let pendingText = "";
-    return {
-      update: vi.fn().mockImplementation((text: string) => {
-        pendingText = text;
-      }),
-      flush: vi.fn().mockImplementation(async () => {
-        if (pendingText && activeMessageId == null) {
-          activeMessageId = nextMessageId++;
-        }
-      }),
-      messageId: vi.fn().mockImplementation(() => activeMessageId),
-      clear: vi.fn().mockResolvedValue(undefined),
-      stop: vi.fn().mockResolvedValue(undefined),
-      forceNewMessage: vi.fn().mockImplementation(() => {
-        activeMessageId = undefined;
-        pendingText = "";
-      }),
-    };
-  }
-
   function setupDraftStreams(params?: { answerMessageId?: number; reasoningMessageId?: number }) {
     const answerDraftStream = createDraftStream(params?.answerMessageId);
     const reasoningDraftStream = createDraftStream(params?.reasoningMessageId);
@@ -598,55 +575,6 @@ describe("dispatchTelegramMessage draft streaming", () => {
       expect.any(Object),
     );
     expect(deliverReplies).not.toHaveBeenCalled();
-  });
-
-  it("flushes each assistant message boundary so previews stream separately before final delivery", async () => {
-    const answerDraftStream = createFlushSequencedDraftStream(2001);
-    const reasoningDraftStream = createDraftStream();
-    createTelegramDraftStream
-      .mockImplementationOnce(() => answerDraftStream)
-      .mockImplementationOnce(() => reasoningDraftStream);
-    dispatchReplyWithBufferedBlockDispatcher.mockImplementation(
-      async ({ dispatcherOptions, replyOptions }) => {
-        await replyOptions?.onPartialReply?.({ text: "First chunk" });
-        await replyOptions?.onAssistantMessageStart?.();
-        await replyOptions?.onPartialReply?.({ text: "Second chunk" });
-        await replyOptions?.onAssistantMessageStart?.();
-        await replyOptions?.onPartialReply?.({ text: "Third chunk" });
-
-        await dispatcherOptions.deliver({ text: "First final" }, { kind: "final" });
-        await dispatcherOptions.deliver({ text: "Second final" }, { kind: "final" });
-        await dispatcherOptions.deliver({ text: "Third final" }, { kind: "final" });
-        return { queuedFinal: true };
-      },
-    );
-    deliverReplies.mockResolvedValue({ delivered: true });
-    editMessageTelegram.mockResolvedValue({ ok: true, chatId: "123", messageId: "2001" });
-
-    await dispatchWithContext({ context: createContext(), streamMode: "partial" });
-
-    expect(answerDraftStream.flush).toHaveBeenCalled();
-    expect(editMessageTelegram).toHaveBeenNthCalledWith(
-      1,
-      123,
-      2001,
-      "First final",
-      expect.any(Object),
-    );
-    expect(editMessageTelegram).toHaveBeenNthCalledWith(
-      2,
-      123,
-      2002,
-      "Second final",
-      expect.any(Object),
-    );
-    expect(editMessageTelegram).toHaveBeenNthCalledWith(
-      3,
-      123,
-      2003,
-      "Third final",
-      expect.any(Object),
-    );
   });
 
   it.each(["block", "partial"] as const)(
