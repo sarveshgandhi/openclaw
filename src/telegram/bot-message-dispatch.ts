@@ -669,9 +669,10 @@ export const dispatchTelegramMessage = async ({
             }
           : undefined,
         onAssistantMessageStart: answerLane.stream
-          ? () => {
+          ? async () => {
               reasoningStepState.resetForNextStep();
               if (answerLane.hasStreamedMessage) {
+                await answerLane.stream?.flush();
                 const previewMessageId = answerLane.stream?.messageId();
                 if (typeof previewMessageId === "number") {
                   archivedAnswerPreviews.push({
