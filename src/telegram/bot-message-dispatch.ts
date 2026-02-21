@@ -630,6 +630,9 @@ export const dispatchTelegramMessage = async ({
         onAssistantMessageStart: answerLane.stream
           ? () => {
               reasoningStepState.resetForNextStep();
+              if (answerLane.hasStreamedMessage) {
+                answerLane.stream?.forceNewMessage();
+              }
               resetDraftLaneState(answerLane);
             }
           : undefined,
